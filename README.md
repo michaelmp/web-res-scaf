@@ -1,7 +1,7 @@
 web-res-scaf
 ============
 
-Fast web resource prototypes.
+Fast web resource prototyping web server.
 
 # Rationale
 
