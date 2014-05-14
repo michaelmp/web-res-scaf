@@ -54,8 +54,9 @@ class DynamicResource(resource.Resource):
     log.read(self)
     return json.dumps({
       "content": self.data,
-      "links": list(self.children.keys()),
-      "location": self.getPath()
+      "links": map(lambda(child):{"name": child.name, "location": child.getPath()}, self.children.values()),
+      "location": self.getPath(),
+      "name": self.name
     })
 
   """
