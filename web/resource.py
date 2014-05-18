@@ -1,6 +1,5 @@
 import json
 
-from twisted.web import error 
 from twisted.web import resource
 
 import log
@@ -26,7 +25,7 @@ class DynamicResource(resource.Resource):
       log.create(self.children[name])
     if name in self.children:
       return self.children[name]
-    return error.NoResource() 
+    return resource.NoResource() 
 
   """
   Full URI for this resource.
