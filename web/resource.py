@@ -4,6 +4,12 @@ from twisted.web import resource
 
 import log
 
+def setAccessControlHeaders(request):
+  request.setHeader("Access-Control-Allow-Headers", "Content-Type")
+  request.setHeader("Access-Control-Allow-Origin", "*")
+  request.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+  request.setHeader("Access-Control-Max-Age", "3600")
+
 """
 A recursive dynamically-defined HTTP resource.
 """
@@ -20,7 +26,7 @@ class DynamicResource(resource.Resource):
   Return 404 if the resource does not exist.
   """
   def getChild(self, name, request):
-    if request.method == "POST" and name not in self.children:
+    if request.method in ("POST", "OPTIONS") and name not in self.children:
       self.children[name] = DynamicResource(name, self)
       log.create(self.children[name])
     if name in self.children:
@@ -36,20 +42,11 @@ class DynamicResource(resource.Resource):
     return "%s" % (self.name)
 
   """
-  Indicate CORS headers for preflight requests.
-  """
-  def render_OPTIONS(self, request):
-    request.setHeader("Access-Control-Allow-Origin", "*")
-    request.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-    request.setHeader("Access-Control-Max-Age", "3600")
-    request.setResponseCode(200)
-    return ""
-
-  """
   Read stuff.
   """
   def render_GET(self, request):
     request.setHeader("Content-Type", "application/json")
+    setAccessControlHeaders(request)
     log.read(self)
     return json.dumps({
       "content": self.data,
@@ -62,6 +59,7 @@ class DynamicResource(resource.Resource):
   Write stuff.
   """
   def render_POST(self, request):
+    setAccessControlHeaders(request)
     try:
       self.data = json.loads(request.content.read())
       request.setResponseCode(200)
@@ -69,4 +67,13 @@ class DynamicResource(resource.Resource):
     except ValueError:
       request.setResponseCode(400)
       log.oops(self)
+    return "" 
+
+  """
+  Get HTTP Options
+  """
+  def render_OPTIONS(self, request):
+    request.setHeader("Content-Type", "application/json")
+    setAccessControlHeaders(request)
+    request.setResponseCode(200)
     return ""
