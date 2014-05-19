@@ -1,17 +1,12 @@
 import json
-
 from twisted.web import resource
 
 import log
-
-def setAccessControlHeaders(request):
-  request.setHeader("Access-Control-Allow-Headers", "Content-Type")
-  request.setHeader("Access-Control-Allow-Origin", "*")
-  request.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-  request.setHeader("Access-Control-Max-Age", "3600")
+import headers
+import options
 
 """
-A recursive dynamically-defined HTTP resource.
+A recursive, dynamically-defined HTTP resource.
 """
 class DynamicResource(resource.Resource):
   def __init__(self, name="", parent=None):
@@ -20,17 +15,22 @@ class DynamicResource(resource.Resource):
     self.children = {}
     self.parent = parent
     self.data = {}
+    log.create(self)
 
   """
   Define a new child resource when the method is POST.
-  Return 404 if the resource does not exist.
+  Return 404 if the resource does not exist and the method is not OPTIONS.
   """
   def getChild(self, name, request):
-    if request.method in ("POST", "OPTIONS") and name not in self.children:
+    if name == "":
+      return self
+    if request.method in ("OPTIONS"):
+      return options.DynamicOptions()
+    if request.method in ("POST") and name not in self.children:
       self.children[name] = DynamicResource(name, self)
-      log.create(self.children[name])
     if name in self.children:
       return self.children[name]
+    print("no child resource {%s}" % name)
     return resource.NoResource() 
 
   """
@@ -38,15 +38,15 @@ class DynamicResource(resource.Resource):
   """
   def getPath(self):
     if self.parent:
-      return "%s/%s" % (self.parent.getPath(), self.name)
-    return "%s" % (self.name)
+      return "%s%s/" % (self.parent.getPath(), self.name)
+    return "%s/" % (self.name)
 
   """
   Read stuff.
   """
   def render_GET(self, request):
-    request.setHeader("Content-Type", "application/json")
-    setAccessControlHeaders(request)
+    headers.setContentHeaders(request)
+    headers.setAccessControlHeaders(request)
     log.read(self)
     return json.dumps({
       "content": self.data,
@@ -59,7 +59,7 @@ class DynamicResource(resource.Resource):
   Write stuff.
   """
   def render_POST(self, request):
-    setAccessControlHeaders(request)
+    headers.setAccessControlHeaders(request)
     try:
       self.data = json.loads(request.content.read())
       request.setResponseCode(200)
@@ -68,12 +68,3 @@ class DynamicResource(resource.Resource):
       request.setResponseCode(400)
       log.oops(self)
     return "" 
-
-  """
-  Get HTTP Options
-  """
-  def render_OPTIONS(self, request):
-    request.setHeader("Content-Type", "application/json")
-    setAccessControlHeaders(request)
-    request.setResponseCode(200)
-    return ""

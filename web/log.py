@@ -16,4 +16,4 @@ def remove(resource):
   print('%s Remove' % resource.getPath())
 
 def oops(resource):
-  print('%s Failed' % resource.getPath())
+  print('%s Error' % resource.getPath())
